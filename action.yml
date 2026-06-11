@@ -1,0 +1,88 @@
+name: 'PatchRail CI Triage'
+description: 'Classify a failed CI log locally and link the matching PatchRail /fix remediation guide. Read-only: no PR, no comment, nothing leaves the runner.'
+author: 'PatchRail'
+branding:
+  icon: 'activity'
+  color: 'blue'
+
+inputs:
+  log-path:
+    description: 'Path to the CI log file to classify. Leave empty to use log-text instead.'
+    required: false
+    default: ''
+  log-text:
+    description: 'Raw log text to classify when no log file is available.'
+    required: false
+    default: ''
+  redact:
+    description: 'Redact secrets, emails and home paths locally before classifying.'
+    required: false
+    default: 'true'
+  patchrail-version:
+    description: 'Pin a specific patchrail version from PyPI (defaults to latest).'
+    required: false
+    default: ''
+  python-version:
+    description: 'Python version used to run the classifier.'
+    required: false
+    default: '3.x'
+
+outputs:
+  failure-class:
+    description: 'The classified CI failure class (e.g. python-test-failure).'
+    value: ${{ steps.triage.outputs.failure-class }}
+  confidence:
+    description: 'Classifier confidence between 0 and 1.'
+    value: ${{ steps.triage.outputs.confidence }}
+  guide-url:
+    description: 'PatchRail /fix remediation guide URL for the failure class.'
+    value: ${{ steps.triage.outputs.guide-url }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Install PatchRail
+      shell: bash
+      run: |
+        if [ -n "${{ inputs.patchrail-version }}" ]; then
+          python -m pip install --quiet "patchrail==${{ inputs.patchrail-version }}"
+        else
+          python -m pip install --quiet patchrail
+        fi
+
+    - name: Classify failure and annotate
+      id: triage
+      shell: bash
+      env:
+        PATCHRAIL_LOG_PATH: ${{ inputs.log-path }}
+        PATCHRAIL_LOG_TEXT: ${{ inputs.log-text }}
+        PATCHRAIL_REDACT: ${{ inputs.redact }}
+      run: |
+        set -euo pipefail
+
+        # Resolve the log source: file path takes precedence, else inline text.
+        LOG_FILE=""
+        if [ -n "${PATCHRAIL_LOG_PATH}" ] && [ -f "${PATCHRAIL_LOG_PATH}" ]; then
+          LOG_FILE="${PATCHRAIL_LOG_PATH}"
+        elif [ -n "${PATCHRAIL_LOG_TEXT}" ]; then
+          LOG_FILE="$(mktemp)"
+          printf '%s' "${PATCHRAIL_LOG_TEXT}" > "${LOG_FILE}"
+        else
+          echo "::error::patchrail-ci-triage: provide either log-path (an existing file) or log-text."
+          exit 1
+        fi
+
+        REDACT_FLAG=""
+        if [ "${PATCHRAIL_REDACT}" = "true" ]; then
+          REDACT_FLAG="--redact"
+        fi
+
+        patchrail ci classify ${REDACT_FLAG} --log "${LOG_FILE}" --format json --out patchrail-ci-result.json
+
+        # Build the guide URL with utm_source=action and emit the annotation + summary.
+        python "${GITHUB_ACTION_PATH}/scripts/annotate.py" patchrail-ci-result.json

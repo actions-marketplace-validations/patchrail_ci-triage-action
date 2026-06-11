@@ -1,0 +1,34 @@
+name: test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run the action against a sample failure log
+        id: triage
+        uses: ./
+        with:
+          log-path: examples/sample-failure.log
+
+      - name: Assert the action produced a classification and guide URL
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "failure-class=${{ steps.triage.outputs.failure-class }}"
+          echo "guide-url=${{ steps.triage.outputs.guide-url }}"
+          test -n "${{ steps.triage.outputs.failure-class }}"
+          case "${{ steps.triage.outputs.guide-url }}" in
+            https://getpatchrail.com/fix*utm_source=action*) echo "OK" ;;
+            *) echo "unexpected guide-url"; exit 1 ;;
+          esac
