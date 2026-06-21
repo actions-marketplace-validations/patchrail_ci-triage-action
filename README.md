@@ -1,7 +1,7 @@
 # PatchRail CI Triage Action
 
 Classify a failed CI log **locally** on the runner and surface the matching
-[PatchRail `/fix` remediation guide](https://getpatchrail.com/fix) as a job
+[PatchRail `/fix` remediation guide](https://getpatchrail.com/fix?utm_source=github&utm_medium=readme&utm_campaign=action_distribution) as a job
 annotation and step summary. Read-only by design: it never opens a pull request,
 posts a comment, claims funding, or sends your logs anywhere.
 
@@ -10,6 +10,11 @@ classifier (100+ failure signatures across Python, Node, Go, Rust, Java, Ruby,
 PHP, .NET, Docker, GitHub Actions and more).
 
 ## Usage
+
+Install from the
+[GitHub Marketplace listing](https://github.com/marketplace/actions/patchrail-ci-triage?utm_source=github&utm_medium=readme&utm_campaign=action_distribution),
+or copy the step below into any workflow that already captures its failed build
+or test log.
 
 ```yaml
 - name: Build
@@ -26,6 +31,9 @@ That's the whole thing: pipe your build/test output to a file, then add the
 step guarded by `if: failure()`. On a red run you get an annotation like
 `python-test-failure (confidence 0.89) — guide: getpatchrail.com/fix/...` plus a
 job summary block.
+
+Need the offline pattern library for local triage outside GitHub Actions? Use
+the [CI Failure Triage Patterns pack](https://patchrail.gumroad.com/l/ci-failure-triage?utm_source=github&utm_medium=readme&utm_campaign=action_distribution).
 
 ## Inputs
 
@@ -84,6 +92,6 @@ uploaded.
 
 Maintained by **Pablo Guillén · PatchRail · [getpatchrail.com](https://getpatchrail.com)**.
 Looking for the full pattern library? See the
-[CI Failure Triage Patterns pack](https://patchrail.gumroad.com/l/ci-failure-triage).
+[CI Failure Triage Patterns pack](https://patchrail.gumroad.com/l/ci-failure-triage?utm_source=github&utm_medium=readme&utm_campaign=action_distribution).
 
 Licensed under the Apache License 2.0.
